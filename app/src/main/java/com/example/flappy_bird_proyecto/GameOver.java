@@ -14,17 +14,16 @@ public class GameOver extends Activity {
         setContentView(R.layout.activity_game_over);
 
         // Referencias a las vistas
-        TextView scoreText = findViewById(R.id.scoreText);
+        TextView puntuacion = findViewById(R.id.puntuacion);
+        TextView nivel = findViewById(R.id.nivel);
         Button restartButton = findViewById(R.id.btnReiniciar);
 
-        // Verifica que las vistas no sean nulas
-        if (scoreText == null || restartButton == null) {
-            throw new RuntimeException("No se encontraron las vistas en el layout");
-        }
-
-        // Obtener puntuación
+        // Obtener puntuación y nivel
         int score = getIntent().getIntExtra("score", 0);
-        scoreText.setText("Puntuación: " + score);
+        int level = getIntent().getIntExtra("nivel", 1);
+
+        puntuacion.setText("Puntuación: " + score);
+        nivel.setText("Nivel alcanzado: " + level);
 
         // Configurar el botón
         restartButton.setOnClickListener(v -> restartGame());

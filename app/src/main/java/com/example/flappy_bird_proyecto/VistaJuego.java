@@ -14,16 +14,14 @@ import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.graphics.Color;
-
 import androidx.annotation.NonNull;
-
 import java.util.Random;
 
 public class VistaJuego extends View {
 
     Handler handler;
     Runnable runnable;
-    final int UPDATE_MILLIS=30;
+    final int UPDATE_MILLIS = 30;
     Bitmap backgraund, topTubo, bottonTubo;
     Display display;
     Point point;
@@ -45,6 +43,18 @@ public class VistaJuego extends View {
     int score = 0;
     boolean[] scored = new boolean[numTubos];
     private Paint textPaint = new Paint();
+    int tubosPasados = 0;
+    int velocidadInicial = 10;
+    int incrementoVelocidad = 4;
+
+    // Variables para el sistema de niveles
+    private boolean mostrarNivel = false;
+    private long tiempoMostrarNivel = 0;
+    private final long DURACION_NIVEL = 1500; // 1.5 segundos
+    private int nivelActual = 1;
+    private Paint nivelPaint = new Paint();
+    private float escalaTexto = 1f;
+    private final float ESCALA_MAXIMA = 1.5f;
 
     public VistaJuego(Context context) {
         super(context);
@@ -52,18 +62,20 @@ public class VistaJuego extends View {
         runnable = this::invalidate;
 
         backgraund = BitmapFactory.decodeResource(getResources(), R.drawable.background);
-        topTubo = BitmapFactory.decodeResource(getResources(), R.drawable.tuberia2);
-        bottonTubo = BitmapFactory.decodeResource(getResources(), R.drawable.tuberia1);
+        topTubo = BitmapFactory.decodeResource(getResources(), R.drawable.tuberia1_2);
+        bottonTubo = BitmapFactory.decodeResource(getResources(), R.drawable.tuberia1_2);
         display = ((Activity) getContext()).getWindowManager().getDefaultDisplay();
         point = new Point();
         display.getSize(point);
         dWidth = point.x;
         dHeight = point.y;
         rect = new Rect(0, 0, dWidth, dHeight);
-        pajaros = new Bitmap[]{BitmapFactory.decodeResource(getResources(), R.drawable.frame_4),
-                BitmapFactory.decodeResource(getResources(), R.drawable.frame_5)};
+        pajaros = new Bitmap[]{
+                BitmapFactory.decodeResource(getResources(), R.drawable.frame_4),
+                BitmapFactory.decodeResource(getResources(), R.drawable.frame_5)
+        };
 
-        pajaroX = dWidth / 4; // Colocar el pájaro más a la izquierda
+        pajaroX = dWidth / 4;
         pajaroY = dHeight / 2 - pajaros[0].getHeight() / 2;
 
         distanciaTubos = dWidth * 3 / 4;
@@ -75,6 +87,15 @@ public class VistaJuego extends View {
             tuboX[i] = dWidth + i * distanciaTubos;
             topTuboY[i] = minTubo + rd.nextInt(maxTubo - minTubo + 1);
         }
+
+        // Configuración del texto de nivel
+        nivelPaint.setColor(Color.YELLOW);
+        nivelPaint.setTextSize(120);
+        nivelPaint.setTextAlign(Paint.Align.CENTER);
+        nivelPaint.setStyle(Paint.Style.STROKE);
+        nivelPaint.setStrokeWidth(5);
+        nivelPaint.setAntiAlias(true);
+        nivelPaint.setShadowLayer(10, 0, 0, Color.BLACK);
     }
 
     @Override
@@ -94,6 +115,12 @@ public class VistaJuego extends View {
             if (juego_State && !scored[i] && pajaroX > tuboX[i] + topTubo.getWidth()) {
                 score++;
                 scored[i] = true;
+                tubosPasados++;
+
+                if (tubosPasados % 10 == 0) {
+                    aumentarVelocidad();
+                    mostrarCambioNivel();
+                }
             }
 
             if (tuboX[i] < -topTubo.getWidth()) {
@@ -114,13 +141,32 @@ public class VistaJuego extends View {
         textPaint.setColor(Color.WHITE);
         textPaint.setTextSize(100);
         textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setAntiAlias(true);
         canvas.drawText(String.valueOf(score), dWidth / 2, 150, textPaint);
+
+        // Mostrar indicador de nivel
+        if (mostrarNivel) {
+            long tiempoActual = System.currentTimeMillis();
+            if (tiempoActual - tiempoMostrarNivel > DURACION_NIVEL) {
+                mostrarNivel = false;
+            } else {
+                float progreso = (float)(tiempoActual - tiempoMostrarNivel) / DURACION_NIVEL;
+                escalaTexto = 1 + (ESCALA_MAXIMA - 1) * (1 - Math.abs(progreso - 0.5f) * 2);
+
+                canvas.save();
+                canvas.scale(escalaTexto, escalaTexto, dWidth / 2, dHeight / 3);
+                nivelPaint.setAlpha((int)(255 * (1 - progreso * 0.5f)));
+                canvas.drawText("NIVEL " + nivelActual, dWidth / 2, dHeight / 3, nivelPaint);
+                canvas.restore();
+            }
+        }
 
         if (juego_State && checkCollision()) {
             juego_State = false;
             handler.removeCallbacks(runnable);
             Intent intent = new Intent(getContext(), GameOver.class);
             intent.putExtra("score", score);
+            intent.putExtra("nivel", nivelActual);
             getContext().startActivity(intent);
             ((Activity) getContext()).finish();
             return;
@@ -129,11 +175,40 @@ public class VistaJuego extends View {
         handler.postDelayed(runnable, UPDATE_MILLIS);
     }
 
+    private void aumentarVelocidad() {
+        tuboVelocidad += incrementoVelocidad;
+        nivelActual++;
+    }
+
+    private void mostrarCambioNivel() {
+        mostrarNivel = true;
+        tiempoMostrarNivel = System.currentTimeMillis();
+        escalaTexto = 1f;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             velocidad = -30;
-            juego_State = true;
+            if (!juego_State) {
+                // Reiniciar juego
+                juego_State = true;
+                score = 0;
+                tubosPasados = 0;
+                nivelActual = 1;
+                tuboVelocidad = velocidadInicial;
+
+                // Reiniciar posición del pájaro
+                pajaroY = dHeight / 2 - pajaros[0].getHeight() / 2;
+                velocidad = 0;
+
+                // Reiniciar tubos
+                for (int i = 0; i < numTubos; i++) {
+                    tuboX[i] = dWidth + i * distanciaTubos;
+                    topTuboY[i] = minTubo + rd.nextInt(maxTubo - minTubo + 1);
+                    scored[i] = false;
+                }
+            }
         }
         return true;
     }

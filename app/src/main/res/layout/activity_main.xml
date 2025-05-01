@@ -6,20 +6,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity"
-    android:background="@drawable/background">
+    android:background="@drawable/inicio">
 
     <ImageButton
         android:id="@+id/imageButton2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="156dp"
+        android:layout_height="99dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginStart="153dp"
+        android:layout_marginStart="125dp"
         android:layout_marginTop="325dp"
         android:layout_marginEnd="130dp"
-        android:layout_marginBottom="329dp"
+        android:layout_marginBottom="307dp"
         android:background="@android:color/transparent"
         android:contentDescription="btn_play"
         android:onClick="inicioJuego"
